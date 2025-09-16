@@ -1,0 +1,70 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Owner {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  stores    Store[] // One owner can manage multiple stores
+  createdAt DateTime @default(now())
+}
+
+model Store {
+  id          Int        @id @default(autoincrement())
+  domain      String     @unique
+  accessToken String?
+  ownerId     Int?
+  owner       Owner?     @relation(fields: [ownerId], references: [id])
+  products    Product[]
+  customers   Customer[]
+  orders      Order[]
+  createdAt   DateTime   @default(now())
+}
+
+model Product {
+  id        Int      @id @default(autoincrement())
+  shopifyId String
+  title     String
+  price     Float
+  storeId   Int
+  store     Store    @relation(fields: [storeId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([storeId, shopifyId])
+}
+
+model Customer {
+  id         Int      @id @default(autoincrement())
+  shopifyId  String
+  email      String?
+  firstName  String?
+  lastName   String?
+  totalSpent Float    @default(0)
+  storeId    Int
+  store      Store    @relation(fields: [storeId], references: [id])
+  orders     Order[] // ✅ Opposite relation added
+  createdAt  DateTime @default(now())
+
+  @@unique([storeId, shopifyId])
+}
+
+model Order {
+  id          Int       @id @default(autoincrement())
+  shopifyId   String
+  createdAt   DateTime
+  totalPrice  Float
+  customerId  Int?
+  storeId     Int
+  store       Store     @relation(fields: [storeId], references: [id])
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  lineItems   Json
+  createdAtDb DateTime  @default(now())
+
+  @@unique([storeId, shopifyId])
+}

@@ -1,58 +1,39 @@
-const { Stores } = require('./models');
+// session-storage.js
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-const sessionStorage = {
-  storeSession: async (session) => {
-    try {
-      console.log('Storing session for shop:', session.shop);
-      
-      await Stores.upsert(
-        session.id,
-        session.shop, // using shop as name
-        session.shop, // domain
-        session.accessToken
-      );
-      
-      return true;
-    } catch (error) {
-      console.error('Error storing session:', error);
-      return false;
-    }
+module.exports = {
+  async storeSession(session) {
+    // session has fields: shop, accessToken, isOnline, expires, scope
+    const domain = session.shop || session.shopDomain || session.shopifyDomain;
+    const accessToken = session.accessToken || session.access_token || session.session?.accessToken;
+
+    if (!domain) throw new Error('storeSession: missing session.shop');
+
+    await prisma.store.upsert({
+      where: { domain },
+      update: {
+        accessToken,
+        isUninstalled: false,
+      },
+      create: {
+        domain,
+        accessToken,
+      },
+    });
+
+    return true;
   },
 
-  loadSession: async (id) => {
-    try {
-      console.log('Loading session for id:', id);
-      
-      const store = await Stores.findByDomain(id);
-      if (store && store.access_token) {
-        return {
-          id: store.id,
-          shop: store.domain,
-          state: 'active',
-          isOnline: false,
-          accessToken: store.access_token,
-          scope: process.env.SCOPES
-        };
-      }
-      return undefined;
-    } catch (error) {
-      console.error('Error loading session:', error);
-      return undefined;
-    }
+  async loadSession(shop) {
+    return prisma.store.findUnique({ where: { domain: shop } });
   },
 
-  deleteSession: async (id) => {
-    try {
-      console.log('Deleting session for id:', id);
-      
-      // We'll just remove the access token instead of deleting the store
-      await Stores.updateAccessToken(id, null);
-      return true;
-    } catch (error) {
-      console.error('Error deleting session:', error);
-      return false;
-    }
-  },
+  async deleteSession(shop) {
+    // mark uninstalled
+    return prisma.store.update({
+      where: { domain: shop },
+      data: { accessToken: null, isUninstalled: true }
+    });
+  }
 };
-
-module.exports = sessionStorage;
