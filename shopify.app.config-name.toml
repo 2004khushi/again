@@ -1,0 +1,5 @@
+app_name = "xeno-intern-test"
+api_key = "02e31e5f8598aaf84c94c1bb70d3157e"
+application_url = "https://ee6f5a3e8a0a.ngrok-free.app"
+embedded = true
+scopes = "read_products,write_products,read_customers,read_orders"
